@@ -4,6 +4,7 @@ from operator import or_
 from functools import reduce
 
 from django.contrib import messages
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect
 # Create your views here.
@@ -24,6 +25,45 @@ from .validations import MCM_list, MCM_schema, gold_list, gold_schema, silver_li
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 # Create your views here.
+
+
+def _current_designation_names(user):
+    return [str(item.designation) for item in HoldsDesignation.objects.select_related('designation').filter(working=user)]
+
+
+def _has_designation(user, designation_name):
+    return HoldsDesignation.objects.filter(working=user, designation__name=designation_name).exists()
+
+
+@login_required(login_url='/accounts/login')
+def rspc_login(request):
+    context = {
+        'error': '',
+        'next_url': request.GET.get('next', '/spacs/convener_view/'),
+    }
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+
+        user = authenticate(username=username, password=password)
+        if user is None:
+            context['error'] = 'Invalid username or password.'
+            return render(request, 'scholarshipsModule/rspc_login.html', context)
+
+        if not _has_designation(user, 'dean_rspc'):
+            context['error'] = 'Your account does not have the RSPC role.'
+            return render(request, 'scholarshipsModule/rspc_login.html', context)
+
+        login(request, user)
+        request.session['rspc_active_role'] = 'dean_rspc'
+        request.session['rspc_active_role_label'] = 'Dean (RSPC)'
+        return HttpResponseRedirect(context['next_url'] or '/spacs/convener_view/')
+
+    if request.user.is_authenticated and 'dean_rspc' in _current_designation_names(request.user):
+        context['active_role'] = request.session.get('rspc_active_role', 'dean_rspc')
+
+    return render(request, 'scholarshipsModule/rspc_login.html', context)
 
 
 @login_required(login_url='/accounts/login')
@@ -59,7 +99,7 @@ def spacs(request):
 
     if request.user.extrainfo.user_type == 'student':
         return HttpResponseRedirect('/spacs/student_view')
-    elif hd_convener:
+    elif hd_convener or request.session.get('rspc_active_role') == 'dean_rspc':
         return HttpResponseRedirect('/spacs/convener_view')
     elif hd_assistant:
         return HttpResponseRedirect('/spacs/staff_view')
@@ -70,11 +110,16 @@ def spacs(request):
 
 @login_required(login_url='/accounts/login')
 def convener_view(request):
+    is_rspc = request.session.get('rspc_active_role') == 'dean_rspc'
     try:
-        convener = Designation.objects.get(name='spacsconvenor')
-        hd = HoldsDesignation.objects.get(
-            user=request.user, designation=convener)
+        if is_rspc:
+            convener = Designation.objects.get(name='dean_rspc')
+        else:
+            convener = Designation.objects.get(name='spacsconvenor')
+        hd = HoldsDesignation.objects.get(user=request.user, designation=convener)
     except:
+        if is_rspc:
+            return HttpResponseRedirect('/spacs/rspc-login/?next=/spacs/convener_view/')
         return HttpResponseRedirect('/logout')
     if request.method == 'POST':
         if 'Submit' in request.POST:

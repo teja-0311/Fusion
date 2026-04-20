@@ -1,45 +1,43 @@
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import *
-from django.urls import include,path
-from django.conf.urls import url
-from . import views
-
-app_name="research_procedures"
+from .views import PatentViewSet, ResearchGroupViewSet, ResearchAreaViewSet
+from .expenditure_views import ExpenditureViewSet
+from .notification_views import NotificationViewSet
+from .staff_views import StaffViewSet, CommitteeViewSet, CommitteeVerdictViewSet
+from .report_views import ProgressReportViewSet, ProjectClosureViewSet, ApprovalsViewSet
+from .stipend_compliance_views import (
+    StipendBatchViewSet, StipendHistoryViewSet,
+    ComplianceReportViewSet, ProjectSettlementViewSet
+)
+from .dashboard_views import dashboard, pending_approvals
+from .filtering_views import projects_list, expenditures_list, staff_list, budget_list, requests_list
 
 router = DefaultRouter()
-# router.register(r'patent', PatentViewSet)
-
-urlpatterns = router.urls
+router.register(r'groups', ResearchGroupViewSet, basename='research-group')
+router.register(r'areas', ResearchAreaViewSet, basename='research-area')
+router.register(r'patent', PatentViewSet)
+router.register(r'expenditures', ExpenditureViewSet, basename='expenditure')
+router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'staff', StaffViewSet, basename='staff')
+router.register(r'committee', CommitteeViewSet, basename='committee')
+router.register(r'committee-verdict', CommitteeVerdictViewSet, basename='committee-verdict')
+router.register(r'reports/progress', ProgressReportViewSet, basename='progress-report')
+router.register(r'projects', ProjectClosureViewSet, basename='project-closure')
+router.register(r'approvals', ApprovalsViewSet, basename='approval')
+# UC-017, UC-018, BR-015 routes
+router.register(r'staff/stipend/batches', StipendBatchViewSet, basename='stipend-batch')
+router.register(r'staff/stipend', StipendHistoryViewSet, basename='stipend-history')
+router.register(r'reports/compliance', ComplianceReportViewSet, basename='compliance-report')
+router.register(r'projects/settlement', ProjectSettlementViewSet, basename='project-settlement')
 
 urlpatterns = [
-      # url(r'^$', views.view_projects, name='patent_registration'),
-      # url(r'^update$', views.patent_status_update, name='patent_status_update'),
-      # url(r'^research_group$', views.research_group_create, name='research_group_create'),
-      # url(r'^project_insert$',views.project_insert,name='project_insert'),
-      # url(r'^consult_insert$',views.consult_insert,name='consult_insert'),
-      # url(r'^add_projects$',views.add_projects,name='add_projects'),
-      # url(r'^view_projects$',views.view_projects,name='view_projects'),
-      # # path('add_requests/<id>/<pj_id>/',views.add_requests,name='add_requests'),
-      # url(r'^api/',include('applications.research_procedures.api.urls')),
-      # path('view_requests/<id>/',views.view_requests),
-      path('projects',views.view_projects),
-      path('view_project_info/<id>/',views.view_project_info),
-      # path('submit_closure_report/<id>/',views.submit_closure_report, name="submit_closure_report"),
-      # path('add_fund_requests/<pj_id>/',views.add_fund_requests, name="add_fund_requests"),
-      # path('add_staff_requests/<pj_id>/',views.add_staff_requests, name="add_staff_requests"),
-      path('view_project_inventory/<pj_id>/',views.view_project_inventory, name="view_project_inventory"),
-      path('view_project_staff/<pj_id>/',views.view_project_staff, name="view_project_staff"),
-      # path('add_financial_outlay/<pid>/',views.add_financial_outlay, name="add_financial_outlay"),
-      # path('financial_outlay/<pid>/',views.financial_outlay_form, name="financial_outlay_form"),
-      path('view_financial_outlay/<pid>/',views.view_financial_outlay, name="view_financial_outlay"),
-      # path('add_staff_details/<pid>/',views.add_staff_details, name="add_staff_details"),
-      path('view_staff_details/<pid>/',views.view_staff_details, name="view_staff_details"),
-      # path('add_staff_request/<id>/',views.add_staff_request, name="add_staff_request"),
-      # path('inbox',views.inbox, name="inbox"),
-      # path('view_request_inbox',views.view_request_inbox, name="view_request_inbox"),
-      # path('forward_request',views.forward_request, name="forward_request"),
-      
-      
+    path('dashboard/', dashboard, name='api-dashboard'),
+    path('dashboard/pending-approvals/', pending_approvals, name='api-pending-approvals'),
+    # Role-filtered list endpoints
+    path('projects/filtered/', projects_list, name='api-projects-filtered'),
+    path('expenditures/filtered/', expenditures_list, name='api-expenditures-filtered'),
+    path('staff/filtered/', staff_list, name='api-staff-filtered'),
+    path('budgets/filtered/', budget_list, name='api-budgets-filtered'),
+    path('requests/filtered/', requests_list, name='api-requests-filtered'),
+] + router.urls
 
-]
-print("URL patterns",urlpatterns)

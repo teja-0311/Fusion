@@ -10,6 +10,7 @@ urlpatterns = [
     url(r'^officeOfDeanPnD/submit$',views.submitRequest,name='pWorkRequest'),
     url(r'^officeOfDeanPnD/action$',views.action,name='action'),
     url(r'^officeOfPurchaseOfficer/',views.officeOfPurchaseOfficer, name ='officeOfPurchaseOfficer'),
+    url(r'^rspc-login/$', views.rspc_login, name='rspc_login'),
     url(r'^apply_purchase/', views.apply_purchase, name='apply_purchase'),
     url(r'^after_purchase/', views.after_purchase, name='after_purchase'),
     url(r'^officeOfRegistrar/$', views.officeOfRegistrar, name='officeOfRegistrar'),

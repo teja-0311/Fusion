@@ -5,8 +5,8 @@ from django.contrib.auth import authenticate, login
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseRedirect,JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.http import HttpResponse, HttpResponseForbidden, HttpResponseRedirect,JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.db import IntegrityError
 
@@ -28,6 +28,65 @@ from .views_office_students import *
 from django.template.defaulttags import register
 
 
+def _current_designation_names(user):
+    return [str(item.designation) for item in HoldsDesignation.objects.select_related('designation').filter(working=user)]
+
+
+def _require_designation(request, allowed_designations):
+    current_designations = _current_designation_names(request.user)
+    if not any(designation in current_designations for designation in allowed_designations):
+        return HttpResponseForbidden('You do not have permission to access this office.')
+    return None
+
+
+def rspc_login(request):
+    """
+    RSPC-only login page.
+    Authenticates the user and activates the RSPC designation for this module only.
+    """
+    context = {
+        'error': '',
+        'available_roles': [('dean_rspc', 'Dean (RSPC)')],
+        'next_url': request.GET.get('next', '/office/officeOfDeanRSPC/'),
+    }
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        selected_role = request.POST.get('role', '').strip()
+        next_url = request.POST.get('next', '/office/officeOfDeanRSPC/')
+
+        user = authenticate(username=username, password=password)
+        if user is None:
+            context['error'] = 'Invalid username or password.'
+            return render(request, 'officeModule/officeOfDeanRSPC/rspc_login.html', context)
+
+        role_mapping = {
+            'dean_rspc': 'Dean (RSPC)',
+        }
+
+        if selected_role not in role_mapping:
+            context['error'] = 'Select a valid RSPC role.'
+            return render(request, 'officeModule/officeOfDeanRSPC/rspc_login.html', context)
+
+        if not HoldsDesignation.objects.filter(working=user, designation__name=selected_role).exists():
+            context['error'] = 'Your account does not have the selected RSPC role.'
+            return render(request, 'officeModule/officeOfDeanRSPC/rspc_login.html', context)
+
+        login(request, user)
+        request.session['rspc_active_role'] = selected_role
+        request.session['rspc_active_role_label'] = role_mapping[selected_role]
+        return redirect(next_url or '/office/officeOfDeanRSPC/')
+
+    if request.user.is_authenticated:
+        current_roles = _current_designation_names(request.user)
+        if 'dean_rspc' in current_roles:
+            context['active_role'] = request.session.get('rspc_active_role', 'dean_rspc')
+
+    return render(request, 'officeModule/officeOfDeanRSPC/rspc_login.html', context)
+
+
+@login_required(login_url='/office/rspc-login/')
 def officeOfDeanRSPC(request):
     '''
     This function is called when the office of dean RSPC is called.
@@ -36,8 +95,15 @@ def officeOfDeanRSPC(request):
     @param request: 
         request from the page
     @return: 
-        renders the page with all the projects and the project extensions, project closures and project reallocations.
+    renders the page with all the projects and the project extensions, project closures and project reallocations.
     '''
+
+    if request.session.get('rspc_active_role') != 'dean_rspc':
+        return redirect('/office/rspc-login/?next=/office/officeOfDeanRSPC/')
+
+    forbidden_response = _require_designation(request, ['dean_rspc'])
+    if forbidden_response:
+        return forbidden_response
 
     project=Project_Registration.objects.select_related('PI_id__user','PI_id__department').all()
     project1=Project_Extension.objects.select_related('project_id__PI_id__user','project_id__PI_id__department').all()

@@ -1,5 +1,160 @@
 {% load static %}
 
+<script>
+// ============================================================================
+// RSPC REST API Integration - Authentication & API Helpers
+// ============================================================================
+
+// Get auth token from localStorage or sessionStorage
+function getAuthToken() {
+    return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+}
+
+// Get CSRF token from Django template
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value || '';
+}
+
+// Generic API call helper - handles auth and error handling
+function callRSPCAPI(endpoint, method, data) {
+    const token = getAuthToken();
+    const csrfToken = getCSRFToken();
+    
+    if (!token) {
+        alert('Authentication Error: Please log in to submit data.');
+        console.warn('No auth token found. User may not be logged in.');
+        return Promise.reject('Not authenticated');
+    }
+    
+    const options = {
+        method: method,
+        headers: {
+            'Authorization': `Token ${token}`,
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        }
+    };
+    
+    if (method !== 'GET' && data) {
+        options.body = JSON.stringify(data);
+    }
+    
+    console.log(`Making ${method} request to ${endpoint}`, data);
+    
+    return fetch(endpoint, options)
+        .then(response => {
+            console.log(`Response status: ${response.status}`);
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(JSON.stringify(err));
+                });
+            }
+            return response.json();
+        })
+        .catch(error => {
+            console.error('API Error:', error);
+            throw error;
+        });
+}
+
+// Show error with user-friendly message
+function showErrorAlert(error, title = 'Error') {
+    try {
+        const err = JSON.parse(error.message);
+        const errMsg = err.error || err.details || err.message || JSON.stringify(err);
+        alert(`${title}\n\n${errMsg}`);
+    } catch (e) {
+        alert(`${title}\n\n${error.message}`);
+    }
+}
+
+// Submit Research Project via REST API
+function submitResearchProject(event) {
+    event.preventDefault();
+    
+    const piId = document.getElementById('researchA').value.trim();
+    const title = document.getElementById('researchB').value.trim();
+    const agency = document.getElementById('researchC').value.trim();
+    const budget = document.getElementById('researchI').value.trim();
+    
+    if (!piId || !title || !agency || !budget) {
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    const data = {
+        name: title,
+        pi_id: piId,
+        pi_name: piId,
+        dept: 'Research',
+        category: 'Research',
+        sponsored_agency: agency,
+        description: title,
+        duration: 12,
+        total_budget: parseFloat(budget),
+        access: 'noCo',
+        type: 'Research'
+    };
+    
+    console.log('Submitting research project:', data);
+    
+    callRSPCAPI('/research_procedures/proposals/submit/', 'POST', data)
+        .then(response => {
+            console.log('Success response:', response);
+            alert('✓ Research project submitted successfully!');
+            event.target.reset();
+            setTimeout(() => location.reload(), 1500);
+        })
+        .catch(error => {
+            console.error('Submission failed:', error);
+            showErrorAlert(error, 'Failed to Submit Research Project');
+        });
+}
+
+// Submit Consultancy Project via REST API
+function submitConsultancyProject(event) {
+    event.preventDefault();
+    
+    const consultant = document.getElementById('consultancyA').value.trim();
+    const title = document.getElementById('consultancyB').value.trim();
+    const client = document.getElementById('consultancyC').value.trim();
+    const budget = document.getElementById('consultancyD').value.trim();
+    
+    if (!consultant || !title || !client || !budget) {
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    const data = {
+        name: title,
+        pi_id: consultant,
+        pi_name: consultant,
+        dept: 'Consultancy',
+        category: 'Consultancy',
+        sponsored_agency: client,
+        description: title,
+        duration: 12,
+        total_budget: parseFloat(budget),
+        access: 'noCo',
+        type: 'Consultancy'
+    };
+    
+    console.log('Submitting consultancy project:', data);
+    
+    callRSPCAPI('/research_procedures/consultancy/submit/', 'POST', data)
+        .then(response => {
+            console.log('Success response:', response);
+            alert('✓ Consultancy project submitted successfully!');
+            event.target.reset();
+            setTimeout(() => location.reload(), 1500);
+        })
+        .catch(error => {
+            console.error('Submission failed:', error);
+            showErrorAlert(error, 'Failed to Submit Consultancy Project');
+        });
+}
+</script>
+
 {% block projects %}
     {% comment %}The tab menu starts here!{% endcomment %}
     <div class="ui pointing secondary menu">
@@ -24,7 +179,7 @@
     {% comment %}The  Research Project segment starts here!{% endcomment %}
     <div class="{% if mark5 != 1 and mark6 != 1 and mark7 != 1 %}ui active tab segment {% else %} ui tab segment {% endif %}" data-tab="research projects">
         {% if request.user == user %}<h4 class="ui dividing header" id="changes8">Add a Research Project</h4>
-        <form class="ui form"  method="post" action="{% url 'eis:project_insert' %}">
+        <form class="ui form" id="researchForm" onsubmit="submitResearchProject(event)">
             {% csrf_token %}
             <div style="display: none;"> <input type="text" id="researchZ" name="project_id"></div>
             <div class="field">
@@ -219,7 +374,7 @@
     {% comment %}The Consultancy Project segment starts here!{% endcomment %}
     <div class="{% if mark5 == 1 %}ui active tab segment {% else %} ui tab segment {% endif %}" data-tab="Consultancy project">
         {% if request.user == user %}<h4 class="ui dividing header"  id="changes9">Add a Consultancy Project</h4>
-        <form class="ui form"  method="post" action="{% url 'eis:consult_insert' %}">
+        <form class="ui form" id="consultancyForm" onsubmit="submitConsultancyProject(event)">
             {% csrf_token %}
             <div style="display: none;"> <input type="text" id="consultancyZ" name="consultancy_id"></div>
             <div class="field">

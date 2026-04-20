@@ -19,14 +19,23 @@ from .models import HoldsDesignation
 def designation(request):
     if request.user.is_authenticated():
         desig = HoldsDesignation.objects.filter(working=request.user)
-        all_designation=[]
+        all_designation = []
+        all_designation_labels = []
         for i in desig:
             all_designation.append(str(i.designation))
-        print(all_designation)
+            all_designation_labels.append(str(i.designation.full_name))
         return {
             'all_designation': all_designation,
+            'all_designation_labels': all_designation_labels,
+            'designat': desig,
+            'rspc_active_role': request.session.get('rspc_active_role', ''),
+            'rspc_active_role_label': request.session.get('rspc_active_role_label', ''),
         }
     else:
         return {
             'all_designation': [],
+            'all_designation_labels': [],
+            'designat': [],
+            'rspc_active_role': '',
+            'rspc_active_role_label': '',
         }

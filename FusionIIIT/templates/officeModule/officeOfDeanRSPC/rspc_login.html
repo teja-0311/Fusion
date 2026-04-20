@@ -1,0 +1,86 @@
+{% extends 'globals/base.html' %}
+{% load static %}
+
+{% block title %}
+RSPC Login
+{% endblock %}
+
+{% block body %}
+<div class="ui raised stackable doubling centered card right floated"
+     style="margin: auto; margin-top: 7.5%; min-width: 420px;">
+
+    <div class="content">
+        <img class="ui rounded centered small image"
+             src="{% static 'globals/img/user.png' %}"
+             style="margin-top: -27.5%; margin-left: 27.5%;"
+             alt="User Image">
+
+        <div class="ui huge centered header">
+            RSPC Module Login
+        </div>
+        <div class="ui small centered grey text">
+            Activate the role for the RSPC dashboard only.
+        </div>
+    </div>
+
+    <div class="content">
+        {% if error %}
+        <div class="ui negative message">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" class="ui form" style="margin-top: 7.5%; margin-bottom: 3.5%;">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next_url }}">
+
+            <div class="field">
+                <label>Username:</label>
+                <div class="ui input">
+                    <input name="username" placeholder="Username" autocomplete="username" required>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Password:</label>
+                <div class="ui input">
+                    <input name="password" placeholder="Password" type="password" autocomplete="current-password" required>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>RSPC Role:</label>
+                <select name="role" class="ui fluid dropdown" required>
+                    <option value="">Select role</option>
+                    {% for role_key, role_label in available_roles %}
+                    <option value="{{ role_key }}" {% if role_key == active_role %}selected{% endif %}>
+                        {{ role_label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field" style="margin-top: 7.5%; margin-bottom: 7.5%;">
+                <div class="ui divider"></div>
+            </div>
+
+            <div class="field">
+                <button class="ui fluid large primary button" type="submit">
+                    Activate RSPC Access
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="extra content">
+        <div class="ui tiny grey text" style="text-align: center;">
+            This does not change login for other modules or the rest of the website.
+        </div>
+    </div>
+</div>
+<div class="ui row">
+    <br>
+    <br>
+    <br>
+</div>
+{% endblock %}
